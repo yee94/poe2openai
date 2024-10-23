@@ -76,6 +76,8 @@ pub fn create_query_request(messages: Vec<Message>, temperature: Option<f32>) ->
 fn convert_role(role: &str) -> String {
     let converted = if role == "assistant" {
         "bot".to_string()
+    } else if role == "system" {
+        "user".to_string()
     } else {
         role.to_string()
     };
