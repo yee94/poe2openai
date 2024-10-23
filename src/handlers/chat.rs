@@ -1,6 +1,7 @@
 use futures_util::future;
 use nanoid::nanoid;
 use poe_api_process::{EventResponse, EventType, PoeError};
+use tracing::{error, info};
 use std::pin::Pin;
 use salvo::http::header;
 use salvo::prelude::*;
@@ -12,6 +13,7 @@ use crate::poe_client::{PoeClientWrapper, create_query_request};
 
 #[handler]
 pub async fn chat_completions(req: &mut Request, res: &mut Response) {
+    info!("收到模型聊天請求");
     let access_key = match req.headers().get("Authorization") {
         Some(auth) => {
             let auth_str = auth.to_str().unwrap_or("");
@@ -31,13 +33,19 @@ pub async fn chat_completions(req: &mut Request, res: &mut Response) {
     };
 
     let chat_request: ChatCompletionRequest = match req.parse_json().await {
-        Ok(req) => req,
+        Ok(req) => {
+            info!("成功解析請求內容");
+            req
+        },
         Err(e) => {
+            error!("解析請求失敗: {}", e);
             res.status_code(StatusCode::BAD_REQUEST);
             res.render(Json(json!({ "error": e.to_string() })));
             return;
         }
     };
+
+    info!("使用模型: {}", chat_request.model);
 
     let client = PoeClientWrapper::new(&chat_request.model, &access_key);
 
