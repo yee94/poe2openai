@@ -1,12 +1,13 @@
-# 🔄 POE to OpenAI API 轉換器
+# 🔄 POE to OpenAI API
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Docker Size](https://img.shields.io/docker/image-size/jeromeleong/poe2openai/0.1.0
+[![Docker Version](https://img.shields.io/docker/v/jeromeleong/poe2openai?sort=semver)](https://hub.docker.com/r/jeromeleong/poe2openai)
+[![Docker Size](https://img.shields.io/docker/image-size/jeromeleong/poe2openai/latest
 )](https://hub.docker.com/r/jeromeleong/poe2openai)
 [![Docker Pulls](https://img.shields.io/docker/pulls/jeromeleong/poe2openai)](https://hub.docker.com/r/jeromeleong/poe2openai)
 
-將 POE API 轉換為 OpenAI API 格式的代理服務器。讓您能夠使用 OpenAI API 的客戶端來無縫接入 POE 的服務。
+將 POE API 轉換為 OpenAI API 格式的代理服務。讓大家能夠通過 OpenAI API 格式使用Poe 的各種AI模型
 
 ## 📑 目錄
 - [主要特點](#-主要特點)
@@ -80,9 +81,9 @@ curl http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-poe-token" \
   -d '{
-    "model": "gpt-4",
+    "model": "gpt-4o-mini",
     "messages": [{"role": "user", "content": "你好"}],
-    "stream": false
+    "stream": true
   }'
 ```
 
@@ -141,6 +142,9 @@ curl http://localhost:8080/v1/chat/completions \
 
 ## ❓ 常見問題
 
+### Q: Poe API Token如何獲取？
+A: 首先要訂閱Poe，才能從[Poe API Key](https://poe.com/api_key)網頁中取得
+
 ### Q: 為什麼會收到認證錯誤？
 A: 確保在請求頭中正確設置了 `Authorization: Bearer your-poe-token`
 
@@ -155,12 +159,7 @@ docker run -d -e PORT=3000 -p 3000:3000 jeromeleong/poe2openai:latest
 
 ## 🤝 貢獻指南
 
-歡迎所有形式的貢獻！請遵循以下步驟：
-
-1. Fork 本專案
-2. 創建新的功能分支
-3. 提交您的更改
-4. 提出 Pull Request
+歡迎所有形式的貢獻！
 
 ## 📄 授權協議
 
