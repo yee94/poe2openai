@@ -29,8 +29,10 @@ RUN cargo build --release
 # 移除虛擬的 src 目錄和建構檔案
 RUN rm -rf src target/release/deps/poe2openai* target/release/poe2openai*
 
-# 複製實際的源碼
+# 複製實際的源碼和資源文件
 COPY src ./src
+COPY templates ./templates
+COPY static ./static
 
 # 重新建構專案
 RUN cargo build --release
@@ -41,6 +43,9 @@ FROM debian:bookworm-slim
 # 設定執行時的環境變數
 ENV HOST=0.0.0.0 \
     PORT=8080 \
+    ADMIN_USERNAME=admin \
+    ADMIN_PASSWORD=123456 \
+    MAX_REQUEST_SIZE=1073741824 \
     LOG_LEVEL=info \
     RUST_BACKTRACE=1 \
     TZ=Asia/Taipei
@@ -62,8 +67,10 @@ RUN groupadd -r poe && useradd -r -g poe poe
 # 建立應用程式目錄
 WORKDIR /app
 
-# 從建構階段複製編譯好的二進制檔案
+# 從建構階段複製編譯好的二進制檔案和資源文件
 COPY --from=builder /usr/src/app/target/release/poe2openai /app/
+COPY --from=builder /usr/src/app/templates /app/templates
+COPY --from=builder /usr/src/app/static /app/static
 
 # 設定檔案權限
 RUN chown -R poe:poe /app
@@ -80,4 +87,4 @@ EXPOSE ${PORT}
 # 設定標籤
 LABEL maintainer="Jerome Leong <jeromeleong1998@gmail.com>" \
     description="Poe API to OpenAI API 轉換服務" \
-    version="0.1.0"
+    version="0.2.0"

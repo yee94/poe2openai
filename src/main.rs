@@ -1,4 +1,5 @@
 use salvo::prelude::*;
+use salvo::serve_static::StaticDir;
 use tracing::{info, debug};
 use std::env;
 mod types;
@@ -49,6 +50,7 @@ async fn main() {
 
     let router: Router = Router::new()
         .hoop(max_size(salvo_max_size.try_into().unwrap()))
+        .push(Router::with_path("static/<**path>").get(StaticDir::new(["static"])))
         .push(handlers::admin_routes())
         .push(Router::with_path("models").get(handlers::get_models))
         .push(Router::with_path("chat/completions").post(handlers::chat_completions))
