@@ -38,7 +38,8 @@ docker pull jeromeleong/poe2openai:latest
 # 運行容器
 docker run --name poe2openai -d \
   -p 8080:8080 \
-  -e ADMIN_USERNAME=admin \  -e ADMIN_PASSWORD=123456 \
+  -e ADMIN_USERNAME=admin\
+  -e ADMIN_PASSWORD=123456 \
   jeromeleong/poe2openai:latest
 ```
 
@@ -54,6 +55,9 @@ services:
     environment:
       - PORT=8080
       - LOG_LEVEL=info
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=123456
+      - MAX_REQUEST_SIZE=1073741824
 ```
 
 ### 從源碼編譯
