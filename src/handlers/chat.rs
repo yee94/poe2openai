@@ -7,6 +7,7 @@ use salvo::prelude::*;
 use serde_json::json;
 use std::pin::Pin;
 use std::time::Instant;
+use std::path::Path;
 use tracing::{debug, error, info};
 use chrono::Utc;
 
@@ -18,7 +19,46 @@ use crate::utils::{format_bytes_length, format_duration, truncate_text};
 pub async fn chat_completions(req: &mut Request, res: &mut Response) {
     let start_time = Instant::now();
     info!("📝 收到新的聊天完成請求");
+
+    let max_size:usize = std::env::var("MAX_REQUEST_SIZE")
+        .unwrap_or_else(|_| "1073741824".to_string()) // 預設 1GB
+        .parse()
+        .unwrap_or(1024 * 1024 * 1024);
     
+    // 讀取並解析 models.yaml 配置
+    let config = match Path::new("models.yaml").exists() {
+        true => {
+            match std::fs::read_to_string("models.yaml") {
+                Ok(contents) => {
+                    match serde_yaml::from_str::<Config>(&contents) {
+                        Ok(config) => config,
+                        Err(e) => {
+                            error!("❌ 解析 models.yaml 失敗: {}", e);
+                            Config {
+                                enable: Some(false),
+                                models: std::collections::HashMap::new(),
+                            }
+                        }
+                    }
+                },
+                Err(e) => {
+                    error!("❌ 讀取 models.yaml 失敗: {}", e);
+                    Config {
+                        enable: Some(false),
+                        models: std::collections::HashMap::new(),
+                    }
+                }
+            }
+        },
+        false => {
+            debug!("⚠️ models.yaml 不存在，預設為不啟用");
+            Config {
+                enable: Some(false),
+                models: std::collections::HashMap::new(),
+            }
+        }
+    };
+
     let access_key = match req.headers().get("Authorization") {
         Some(auth) => {
             let auth_str = auth.to_str().unwrap_or("");
@@ -40,37 +80,99 @@ pub async fn chat_completions(req: &mut Request, res: &mut Response) {
         }
     };
 
-    let chat_request = match req.parse_json::<ChatCompletionRequest>().await {
-        Ok(req) => {
-            debug!("📊 請求解析成功 | 模型: {} | 訊息數量: {} | 是否串流: {:?}", 
-                req.model, 
-                req.messages.len(),
-                req.stream
-            );
-            req
+    let chat_request = match req.payload_with_max_size(max_size).await {
+        Ok(bytes) => {
+            match serde_json::from_slice::<ChatCompletionRequest>(&bytes) {
+                Ok(req) => {
+                    debug!("📊 請求解析成功 | 模型: {} | 訊息數量: {} | 是否串流: {:?}", 
+                        req.model, 
+                        req.messages.len(),
+                        req.stream
+                    );
+                    req
+                },
+                Err(e) => {
+                    error!("❌ JSON 解析失敗: {}", e);
+                    res.status_code(StatusCode::BAD_REQUEST);
+                    res.render(Json(OpenAIErrorResponse {
+                        error: OpenAIError {
+                            message: format!("JSON 解析失敗: {}", e),
+                            r#type: "invalid_request_error".to_string(),
+                            code: "parse_error".to_string(),
+                            param: None,
+                        }
+                    }));
+                    return;
+                }
+            }
         },
         Err(e) => {
-            error!("❌ 請求解析失敗: {}", e);
-            res.status_code(StatusCode::BAD_REQUEST);
-            res.render(Json(json!({ "error": e.to_string() })));
+            error!("❌ 請求大小超過限制或讀取失敗: {}", e);
+            res.status_code(StatusCode::PAYLOAD_TOO_LARGE);
+            res.render(Json(OpenAIErrorResponse {
+                error: OpenAIError {
+                    message: format!("請求大小超過限制 ({} bytes) 或讀取失敗: {}", max_size, e),
+                    r#type: "invalid_request_error".to_string(),
+                    code: "payload_too_large".to_string(),
+                    param: None,
+                }
+            }));
             return;
         }
     };
-
-    info!("🤖 使用模型: {}", chat_request.model);
-
-    let client = PoeClientWrapper::new(&chat_request.model, &access_key);
-    let query_request = create_query_request(chat_request.messages, chat_request.temperature);
-    let stream = chat_request.stream.unwrap_or(false);
     
+    // 尋找映射的原始模型名稱
+    let (display_model, original_model) = if config.enable.unwrap_or(false) {
+        let requested_model = chat_request.model.clone();
+
+        // 檢查當前請求的模型是否是某個映射的目標
+        let mapping_entry = config.models.iter().find(|(_, cfg)| {
+            if let Some(mapping) = &cfg.mapping {
+                mapping.to_lowercase() == requested_model.to_lowercase()
+            } else {
+                false
+            }
+        });
+
+        if let Some((original_name, _)) = mapping_entry {
+            // 如果找到映射，使用原始模型名稱
+            debug!("🔄 反向模型映射: {} -> {}", requested_model, original_name);
+            (requested_model, original_name.clone())
+        } else {
+            // 如果沒找到映射，檢查是否有直接映射配置
+            if let Some(model_config) = config.models.get(&requested_model) {
+                if let Some(mapped_name) = &model_config.mapping {
+                    debug!("🔄 直接模型映射: {} -> {}", requested_model, mapped_name);
+                    (requested_model.clone(), requested_model)
+                } else {
+                    // 沒有映射配置，使用原始名稱
+                    (requested_model.clone(), requested_model)
+                }
+            } else {
+                // 完全沒有相關配置，使用原始名稱
+                (requested_model.clone(), requested_model)
+            }
+        }
+    } else {
+        // 配置未啟用，直接使用原始名稱
+        (chat_request.model.clone(), chat_request.model.clone())
+    };
+
+    info!("🤖 使用模型: {} (原始: {})", display_model, original_model);
+
+    let client = PoeClientWrapper::new(&original_model, &access_key);
+
+    let query_request = create_query_request(&original_model, chat_request.messages, chat_request.temperature);
+
+    let stream = chat_request.stream.unwrap_or(false);
     debug!("🔄 請求模式: {}", if stream { "串流" } else { "非串流" });
 
     match client.stream_request(query_request).await {
         Ok(event_stream) => {
             if stream {
-                handle_stream_response(res, event_stream, &chat_request.model).await;
+                handle_stream_response(res, event_stream, &display_model).await;
             } else {
-                handle_non_stream_response(res, event_stream, &chat_request.model).await;
+                handle_non_stream_response(res, event_stream, &display_model).await;
             }
         },
         Err(e) => {
@@ -104,6 +206,12 @@ fn convert_poe_error_to_openai(error: &poe_api_process::types::ErrorResponse) ->
             StatusCode::UNAUTHORIZED,
             "invalid_auth",
             "invalid_api_key"
+        )
+    } else if error.text.contains("Bot does not exist") {
+        (
+            StatusCode::NOT_FOUND,
+            "model_not_found",
+            "model_not_found"
         )
     } else {
         (
@@ -442,7 +550,10 @@ async fn handle_replace_response(
     
     let (tx, mut rx) = mpsc::channel(1);
     let last_content = Arc::new(Mutex::new(String::new()));
+    let accumulated_text = Arc::new(Mutex::new(String::new()));
+    
     let last_content_clone = Arc::clone(&last_content);
+    let accumulated_text_clone = Arc::clone(&accumulated_text);
     
     tokio::spawn(async move {
         debug!("🏃 啟動背景事件收集任務");
@@ -454,8 +565,14 @@ async fn handle_replace_response(
                     match event.event {
                         EventType::ReplaceResponse => {
                             if let Some(data) = event.data {
-                                debug!("📝 更新內容 | 長度: {}", format_bytes_length(data.text.len()));
+                                debug!("📝 更新替換內容 | 長度: {}", format_bytes_length(data.text.len()));
                                 *last_content_clone.lock().unwrap() = data.text;
+                            }
+                        },
+                        EventType::Text => {
+                            if let Some(data) = event.data {
+                                debug!("📝 累加文本內容 | 長度: {}", format_bytes_length(data.text.len()));
+                                accumulated_text_clone.lock().unwrap().push_str(&data.text);
                             }
                         },
                         EventType::Done => {
@@ -481,13 +598,28 @@ async fn handle_replace_response(
     });
 
     let _ = rx.recv().await;
+    
     let final_content = {
-        let content = last_content.lock().unwrap();
-        content.clone()
+        let replace_content = last_content.lock().unwrap();
+        let text_content = accumulated_text.lock().unwrap();
+        
+        if text_content.len() > replace_content.len() {
+            debug!("📊 選擇累加文本內容 (較長) | 累加長度: {} | 替換長度: {}", 
+                format_bytes_length(text_content.len()),
+                format_bytes_length(replace_content.len())
+            );
+            text_content.clone()
+        } else {
+            debug!("📊 選擇替換內容 (較長或相等) | 替換長度: {} | 累加長度: {}", 
+                format_bytes_length(replace_content.len()),
+                format_bytes_length(text_content.len())
+            );
+            replace_content.clone()
+        }
     };
 
     let duration = start_time.elapsed();
-    debug!("✅ ReplaceResponse 處理完成 | 內容長度: {} | 耗時: {}", 
+    debug!("✅ ReplaceResponse 處理完成 | 最終內容長度: {} | 耗時: {}", 
         format_bytes_length(final_content.len()),
         format_duration(duration)
     );

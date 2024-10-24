@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Models管理介面</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f5f5f5;
+            --border-color: #ddd;
+            --text-color: #333;
+            --danger-color: #dc3545;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover {
+            background-color: #357abd;
+        }
+
+        .btn i {
+            font-size: 14px;
+        }
+
+        .api-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .model-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .model-info {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        .model-name {
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .model-mapping {
+            font-size: 14px;
+            color: var(--text-color);
+            margin-top: 4px;
+        }
+
+        .original-name {
+            color: var(--danger-color);
+            text-decoration: line-through;
+            margin-right: 8px;
+        }
+
+        .model-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tri-state-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: white;
+            position: relative;
+        }
+
+        .tri-state-checkbox.v-state {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+
+        .tri-state-checkbox.x-state {
+            background-color: #ffe6e6;
+            border-color: #ffcccc;
+        }
+
+        .button-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .edit-btn, .reset-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--primary-color);
+            padding: 5px;
+        }
+
+        .edit-btn:hover, .reset-btn:hover {
+            color: #357abd;
+        }
+
+        .reset-btn {
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 300px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .close {
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background-color: #333;
+            color: white;
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .guide-modal {
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .guide-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .guide-item {
+            background: var(--secondary-color);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .guide-item h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .guide-item ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .guide-item li {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            font-size: 0.95em;
+        }
+
+        .guide-item strong {
+            color: var(--text-color);
+        }
+
+        .guide-modal::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .guide-modal::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .guide-modal::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .guide-modal::-webkit-scrollbar-thumb:hover {
+            background: #357abd;
+        }
+
+        @media (max-width: 768px) {
+            .models-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .button-group {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .api-toggle {
+                justify-content: center;
+            }
+
+            .guide-modal {
+                width: 95%;
+                margin: 10px;
+            }
+
+            .guide-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="button-group">
+                <button class="btn" onclick="loadModels()">
+                    <i class="fas fa-file-upload"></i>
+                    讀取
+                </button>
+                <button class="btn" onclick="saveModels()">
+                    <i class="fas fa-save"></i>
+                    保存
+                </button>
+                <button class="btn" onclick="fetchModels()">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    爬取Models列表
+                </button>
+                <button class="btn" onclick="showGuide()">
+                    <i class="fas fa-question-circle"></i>
+                    功能說明
+                </button>
+            </div>
+            <div class="api-toggle">
+                <span>啟用Models自定義</span>
+                <label class="switch">
+                    <input type="checkbox" id="apiToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="models-grid" id="modelsGrid">
+            <!-- Models將通過JavaScript動態生成 -->
+        </div>
+    </div>
+
+    <!-- 編輯Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>編輯Model映射名稱</h2>
+                <span class="close">&times;</span>
+            </div>
+            <input type="text" id="modelNameInput" placeholder="輸入新的映射名稱">
+            <div class="modal-buttons">
+                <button class="btn" onclick="cancelEdit()">取消</button>
+                <button class="btn" onclick="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能說明Modal -->
+    <div id="guideModal" class="modal">
+        <div class="modal-content guide-modal">
+            <div class="modal-header">
+                <h2>功能說明</h2>
+                <span class="close" onclick="closeGuide()">&times;</span>
+            </div>
+            <div class="guide-content">
+                <div class="guide-item">
+                    <h3>模型狀態設定</h3>
+                    <ul>
+                        <li><strong>無標記 (-)</strong>：保持原始模型設定，不做任何修改</li>
+                        <li><strong>打勾 (V)</strong>：主要針對在Poe 平台使用 replace_response 回應的模型而作出的兼容性處理</li>
+                        <li><strong>打叉 (X)</strong>：停用該模型，在模型列表中將不會顯示此模型</li>
+                    </ul>
+                </div>
+                <div class="guide-item">
+                    <h3>模型映射功能</h3>
+                    <ul>
+                        <li>可為模型設定一個新的顯示名稱，原始名稱會顯示在左側並加上刪除線</li>
+                        <li>適用於需要將模型名稱對應到其他API格式的情況</li>
+                        <li>映射後的名稱將會在所有API端點中使用</li>
+                    </ul>
+                </div>
+                <div class="guide-item">
+                    <h3>全域啟用開關影響範圍</h3>
+                    <ul>
+                        <li>啟用後會影響以下API端點的行為：</li>
+                        <li><strong>模型列表過濾 & 模型映射</strong></li>
+                        <li>- GET /v1/models</li>
+                        <li>- GET /models</li>
+                        <li><strong>聊天事件處理 & 模型映射</strong></li>
+                        <li>- POST /chat/completions</li>
+                        <li>- POST /v1/chat/completions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知 -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let models = [];
+        let currentEditModel = null;
+        let configData = {
+            enable: false,
+            models: {}
+        };
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchModels();
+            loadConfig();
+        });
+
+        // 加載配置
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/admin/config', {
+                    credentials: 'same-origin' // 確保攜帶認證資訊
+                });
+                const data = await response.json();
+                configData = data;
+                document.getElementById('apiToggle').checked = configData.enable;
+                renderModels();
+            } catch (error) {
+                showToast('載入配置失敗');
+            }
+        }
+
+
+        function toggleModelState(model) {
+            const states = ['-', 'V', 'X'];
+            const currentIndex = states.indexOf(model.state);
+            model.state = states[(currentIndex + 1) % 3];
+                
+            // 更新配置
+            if (!configData.models[model.name]) {
+                configData.models[model.name] = {};
+            }
+        
+            // 清除現有狀態
+            delete configData.models[model.name].replace_response;
+            delete configData.models[model.name].enable;
+        
+            // 根據新狀態設定
+            if (model.state === 'V') {
+                configData.models[model.name].replace_response = true;
+            } else if (model.state === 'X') {
+                configData.models[model.name].enable = false;
+            }
+        
+            // 如果模型沒有任何設定，則移除整個項目
+            if (Object.keys(configData.models[model.name]).length === 0) {
+                delete configData.models[model.name];
+            }
+        
+            renderModels();
+        }
+
+        // 渲染Models網格
+        function renderModels() {
+            const grid = document.getElementById('modelsGrid');
+            grid.innerHTML = '';
+        
+            models.sort((a, b) => a.name.localeCompare(b.name)).forEach(model => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                
+                const modelInfo = document.createElement('div');
+                modelInfo.className = 'model-info';
+
+                const nameContainer = document.createElement('div');
+                nameContainer.className = 'model-name';
+
+                // 檢查是否有映射名稱
+                const modelConfig = configData.models[model.name] || {};
+                if (modelConfig.mapping && modelConfig.mapping !== model.name) {
+                    const originalName = document.createElement('span');
+                    originalName.className = 'original-name';
+                    originalName.textContent = model.name;
+                    
+                    const mappingName = document.createElement('span');
+                    mappingName.textContent = modelConfig.mapping;
+                    
+                    nameContainer.appendChild(originalName);
+                    nameContainer.appendChild(mappingName);
+                } else {
+                    nameContainer.textContent = model.name;
+                }
+
+                modelInfo.appendChild(nameContainer);
+
+                const controls = document.createElement('div');
+                controls.className = 'model-controls';
+
+                const checkbox = document.createElement('div');
+                checkbox.className = 'tri-state-checkbox';
+                if (model.state === 'V') {
+                    checkbox.classList.add('v-state');
+                    checkbox.innerHTML = '&#10003;';
+                } else if (model.state === 'X') {
+                    checkbox.classList.add('x-state');
+                    checkbox.innerHTML = '&#10005;';
+                }
+                checkbox.onclick = () => toggleModelState(model);
+
+                const buttonControls = document.createElement('div');
+                buttonControls.className = 'button-controls';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                editBtn.onclick = () => showEditModal(model);
+
+                const resetBtn = document.createElement('button');
+                resetBtn.className = 'reset-btn';
+                resetBtn.innerHTML = '<i class="fas fa-undo"></i>';
+                resetBtn.onclick = () => resetMapping(model);
+                
+                // 只在有映射時顯示重置按鈕
+                if (modelConfig.mapping && modelConfig.mapping !== model.name) {
+                    resetBtn.style.display = 'block';
+                }
+
+                buttonControls.appendChild(editBtn);
+                buttonControls.appendChild(resetBtn);
+
+                controls.appendChild(checkbox);
+                controls.appendChild(buttonControls);
+
+                card.appendChild(modelInfo);
+                card.appendChild(controls);
+                grid.appendChild(card);
+            });
+        }
+
+        // 重置映射
+        function resetMapping(model) {
+            if (configData.models[model.name]) {
+                delete configData.models[model.name].mapping;
+                if (Object.keys(configData.models[model.name]).length === 0) {
+                    delete configData.models[model.name];
+                }
+            }
+            renderModels();
+            showToast('已重置映射名稱');
+        }
+
+        // 顯示編輯Modal
+        function showEditModal(model) {
+            currentEditModel = model;
+            const modal = document.getElementById('editModal');
+            const input = document.getElementById('modelNameInput');
+            input.value = configData.models[model.name]?.mapping || '';
+            modal.style.display = 'block';
+        }
+
+        // 顯示功能說明Modal
+        function showGuide() {
+            const modal = document.getElementById('guideModal');
+            modal.style.display = 'block';
+        }
+
+        // 關閉功能說明Modal
+        function closeGuide() {
+            const modal = document.getElementById('guideModal');
+            modal.style.display = 'none';
+        }
+
+        // 取消編輯
+        function cancelEdit() {
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'none';
+            currentEditModel = null;
+        }
+
+        // 保存編輯
+        function saveEdit() {
+            const input = document.getElementById('modelNameInput');
+            const newName = input.value.trim();
+            
+            if (currentEditModel) {
+                if (newName) {
+                    if (!configData.models[currentEditModel.name]) {
+                        configData.models[currentEditModel.name] = {};
+                    }
+                    configData.models[currentEditModel.name].mapping = newName;
+                } else {
+                    if (configData.models[currentEditModel.name]) {
+                        delete configData.models[currentEditModel.name].mapping;
+                        if (Object.keys(configData.models[currentEditModel.name]).length === 0) {
+                            delete configData.models[currentEditModel.name];
+                        }
+                    }
+                }
+                renderModels();
+                cancelEdit();
+                showToast('修改成功');
+            }
+        }
+
+        // Modal關閉按鈕
+        document.querySelector('.close').onclick = cancelEdit;
+
+        // 點擊Modal外部關閉
+        window.onclick = (event) => {
+            const editModal = document.getElementById('editModal');
+            const guideModal = document.getElementById('guideModal');
+            if (event.target === editModal) {
+                cancelEdit();
+            }
+            if (event.target === guideModal) {
+                closeGuide();
+            }
+        };
+
+        // 顯示Toast通知
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // 配置切換
+        document.getElementById('apiToggle').onchange = async (e) => {
+            const enabled = e.target.checked;
+            configData.enable = enabled;
+            try {
+                await saveConfig();
+                showToast(`${enabled ? '已啟用' : '已停用'}Model自定義文件`);
+            } catch (error) {
+                showToast('更新配置失敗');
+                e.target.checked = !enabled;
+                configData.enable = !enabled;
+            }
+        };
+
+        // 保存配置
+        async function saveConfig() {
+            try {
+                const response = await fetch('/api/admin/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin', // 確保攜帶認證資訊
+                    body: JSON.stringify(configData)
+                });
+                if (!response.ok) throw new Error('保存失敗');
+                showToast('配置已保存');
+            } catch (error) {
+                showToast('保存配置失敗');
+                throw error;
+            }
+        }
+
+        // 載入Models
+        async function loadModels() {
+            try {
+                // 直接從 YAML 重新載入配置，放棄當前所有未儲存的操作
+                const response = await fetch('/api/admin/config');
+                const data = await response.json();
+
+                // 完全替換當前配置
+                configData = data;
+
+                // 重置所有模型的狀態
+                models = models.map(model => ({
+                    ...model,
+                    state: configData.models[model.name]?.replace_response ? 'V' :
+                           configData.models[model.name]?.enable === false ? 'X' : '-'
+                }));
+
+                // 重新渲染 UI
+                renderModels();
+
+                showToast('已重新載入配置檔案');
+            } catch (error) {
+                showToast('載入配置失敗');
+                console.error('載入配置錯誤:', error);
+            }
+        }
+
+        // 保存Models
+        async function saveModels() {
+            try {
+                await saveConfig();
+            } catch (error) {
+                showToast('保存失敗');
+            }
+        }
+
+        // 獲取Models列表
+        async function fetchModels() {
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                models = data.data.map(model => ({
+                    name: model.id,
+                    state: configData.models[model.id]?.replace_response ? 'V' :
+                           configData.models[model.id]?.enable === false ? 'X' : '-'
+                }));
+                renderModels();
+                showToast('已更新Models列表');
+            } catch (error) {
+                showToast('獲取Models列表失敗');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -74,3 +74,19 @@ pub struct OpenAIError {
     pub code: String,
     pub param: Option<String>,
 }
+
+#[derive(Default, Serialize, Deserialize)]
+pub(crate) struct Config {
+    pub(crate) enable: Option<bool>,
+    pub(crate) models: std::collections::HashMap<String, ModelConfig>,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub(crate) struct ModelConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) mapping: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) replace_response: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) enable: Option<bool>,
+}

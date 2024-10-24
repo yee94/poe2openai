@@ -8,7 +8,11 @@ mod utils;
 
 fn get_env_or_default(key: &str, default: &str) -> String {
     let value = env::var(key).unwrap_or_else(|_| default.to_string());
-    debug!("🔧 環境變數 {} = {}", key, value);
+    if key == "ADMIN_PASSWORD" {
+        debug!("🔧 環境變數 {} = {}", key, "*".repeat(value.len()));
+    } else {
+        debug!("🔧 環境變數 {} = {}", key, value);
+    }
     value
 }
 
@@ -32,14 +36,23 @@ async fn main() {
     
     let host = get_env_or_default("HOST", "0.0.0.0");
     let port = get_env_or_default("PORT", "8080");
+    get_env_or_default("ADMIN_USERNAME", "admin");
+    get_env_or_default("ADMIN_PASSWORD", "123456");
+    let salvo_max_size = get_env_or_default("MAX_REQUEST_SIZE", "1073741824")
+        .parse()
+        .unwrap_or(1024 * 1024 * 1024); // 預設 1GB
+
     let bind_address = format!("{}:{}", host, port);
 
     info!("🌟 正在啟動 Poe API To OpenAI API 服務...");
     debug!("📍 服務綁定地址: {}", bind_address);
 
-    let router = Router::new()
+    let router: Router = Router::new()
+        .hoop(max_size(salvo_max_size.try_into().unwrap()))
+        .push(handlers::admin_routes())
         .push(Router::with_path("models").get(handlers::get_models))
         .push(Router::with_path("chat/completions").post(handlers::chat_completions))
+        .push(Router::with_path("api/models").get(handlers::get_models))
         .push(Router::with_path("v1/models").get(handlers::get_models))
         .push(Router::with_path("v1/chat/completions").post(handlers::chat_completions));
 
