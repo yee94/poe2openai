@@ -1,0 +1,54 @@
+queryInfo: {
+	"queryName": "sendMessageMutation",
+	"variables": {
+		"chatId": 871160085,
+		"bot": "claude_3_igloo",
+		"query": "阅读这个问题件",
+		"source": {
+			"sourceType": "chat_input",
+			"chatInputMetadata": {
+				"useVoiceRecord": false
+			}
+		},
+		"clientNonce": "V4YEWDx94hx5AtDZ",
+		"sdid": "332d7088-e197-4227-937c-4bcc53aacfc7",
+		"attachments": [
+			"file0"
+		],
+		"existingMessageAttachmentsIds": [],
+		"shouldFetchChat": false,
+		"messagePointsDisplayPrice": 380,
+		"referencedMessageId": null
+	},
+	"extensions": {
+		"hash": "68c788501b48e8662945256369c31fb92f6d04779514db35a929b36f054fe4f8"
+	}
+}
+
+file0: (binary)
+
+
+{
+    "queryName": "sendMessageMutation",
+    "variables": {
+        "chatId": 871160085,
+        "bot": "claude_3_igloo",
+        "query": "这是一个 JSON 文件，包含了一系列鞋子相关的中文描述。让我分析一下其内容结构：\n\n数据格式：\nJSON 数组格式\n每个对象都有一个 \"cname\" 属性\n命名规则分为四个部分，用\"-\"分隔：\n年龄段（儿童/成人）\n性别（男性/女性）\n鞋子类型（凉鞋/拖鞋/皮鞋/靴子/休闲鞋/运动鞋）\n拍摄角度（特写/半身）+ 编号\n数据统计：\n总计27条记录\n主要是儿童女性的鞋子\n凉鞋占比最多\n以特写视角为主\n这似乎是一个用于图片分类或标注的数据集命名规范。需要我对某个具体方面进行更详细的分析吗？",
+        "source": {
+            "sourceType": "chat_input",
+            "chatInputMetadata": {
+                "useVoiceRecord": false
+            }
+        },
+        "clientNonce": "Frz3cFmsFnOtFXDz",
+        "sdid": "332d7088-e197-4227-937c-4bcc53aacfc7",
+        "attachments": [],
+        "existingMessageAttachmentsIds": [],
+        "shouldFetchChat": false,
+        "messagePointsDisplayPrice": 380,
+        "referencedMessageId": null
+    },
+    "extensions": {
+        "hash": "68c788501b48e8662945256369c31fb92f6d04779514db35a929b36f054fe4f8"
+    }
+}
